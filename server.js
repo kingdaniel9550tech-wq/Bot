@@ -3,75 +3,54 @@ const app = express();
 
 app.get('/download', async (req, res) => {
   const videoUrl = req.query.url;
-  if (!videoUrl) {
-    console.log("❌ Error: Missing video URL parameter");
-    return res.status(400).send('Missing video URL');
-  }
-
-  console.log(`🔍 Proxy requested for URL: ${videoUrl}`);
+  if (!videoUrl) return res.status(400).send('Missing video URL');
 
   try {
     let audioUrl = null;
 
-    // Source 1: Siputzx
+    // Alternative Endpoint 1: Vyturex API
     try {
-      const res1 = await fetch(`https://api.siputzx.my.id/api/d/ytmp3?url=${encodeURIComponent(videoUrl)}`);
+      const res1 = await fetch(`https://api.vyturex.com/ytmp3?url=${encodeURIComponent(videoUrl)}`);
       const data1 = await res1.json();
-      if (data1?.status && (data1?.data?.dl || data1?.data?.download)) {
-        audioUrl = data1.data.dl || data1.data.download;
-        console.log("✅ Source 1 (Siputzx) succeeded.");
+      if (data1?.status && data1?.downloadUrl) {
+        audioUrl = data1.downloadUrl;
       }
-    } catch (e) {
-      console.log("⚠️ Source 1 failed:", e.message);
-    }
+    } catch (e) {}
 
-    // Source 2: Ryzendesu
+    // Alternative Endpoint 2: Delirius API
     if (!audioUrl) {
       try {
-        const res2 = await fetch(`https://api.ryzendesu.vip/api/downloader/ytmp3?url=${encodeURIComponent(videoUrl)}`);
+        const res2 = await fetch(`https://delirius-api-oficial.vercel.app/download/ytmp3?url=${encodeURIComponent(videoUrl)}`);
         const data2 = await res2.json();
-        if (data2?.status && data2?.url) {
-          audioUrl = data2.url;
-          console.log("✅ Source 2 (Ryzendesu) succeeded.");
+        if (data2?.status && data2?.data?.link) {
+          audioUrl = data2.data.link;
         }
-      } catch (e) {
-        console.log("⚠️ Source 2 failed:", e.message);
-      }
+      } catch (e) {}
     }
 
-    // Source 3: BK9
+    // Alternative Endpoint 3: Apify / SaveFrom wrapper fallback
     if (!audioUrl) {
       try {
-        const res3 = await fetch(`https://bk9.fun/download/youtube?url=${encodeURIComponent(videoUrl)}`);
+        const res3 = await fetch(`https://api.siputzx.my.id/api/d/ytmp3?url=${encodeURIComponent(videoUrl)}`);
         const data3 = await res3.json();
-        if (data3?.status && data3?.BK9?.audio) {
-          audioUrl = data3.BK9.audio;
-          console.log("✅ Source 3 (BK9) succeeded.");
+        if (data3?.status && (data3?.data?.dl || data3?.data?.download)) {
+          audioUrl = data3.data.dl || data3.data.download;
         }
-      } catch (e) {
-        console.log("⚠️ Source 3 failed:", e.message);
-      }
+      } catch (e) {}
     }
 
     if (!audioUrl) {
-      console.log("❌ All proxy download sources failed for:", videoUrl);
       return res.status(500).send('All proxy download sources failed.');
     }
 
-    console.log(`📥 Fetching audio stream from external provider...`);
     const audioRes = await fetch(audioUrl);
-    if (!audioRes.ok) {
-      console.log("❌ Failed to fetch audio stream buffer, status:", audioRes.status);
-      return res.status(500).send('Failed to fetch audio stream buffer.');
-    }
+    if (!audioRes.ok) return res.status(500).send('Failed to fetch audio stream buffer.');
 
     res.setHeader('Content-Type', 'audio/mpeg');
     const arrayBuffer = await audioRes.arrayBuffer();
-    console.log(`✅ Successfully streaming audio buffer to bot. Size: ${arrayBuffer.byteLength} bytes`);
     res.send(Buffer.from(arrayBuffer));
 
   } catch (error) {
-    console.log("❌ Critical Proxy Error:", error.message);
     res.status(500).send('Proxy error: ' + error.message);
   }
 });
