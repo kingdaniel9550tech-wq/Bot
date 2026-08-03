@@ -8,7 +8,7 @@ app.get('/download', async (req, res) => {
   try {
     let audioUrl = null;
 
-    // Render's clean IP successfully queries the downloader APIs
+    // Source 1: Siputzx
     try {
       const res1 = await fetch(`https://api.siputzx.my.id/api/d/ytmp3?url=${encodeURIComponent(videoUrl)}`);
       const data1 = await res1.json();
@@ -17,7 +17,7 @@ app.get('/download', async (req, res) => {
       }
     } catch (e) {}
 
-    // Fallback downloader endpoint on Render
+    // Source 2: Ryzendesu
     if (!audioUrl) {
       try {
         const res2 = await fetch(`https://api.ryzendesu.vip/api/downloader/ytmp3?url=${encodeURIComponent(videoUrl)}`);
@@ -28,13 +28,23 @@ app.get('/download', async (req, res) => {
       } catch (e) {}
     }
 
+    // Source 3: BK9
     if (!audioUrl) {
-      return res.status(500).send('Could not retrieve audio stream URL.');
+      try {
+        const res3 = await fetch(`https://bk9.fun/download/youtube?url=${encodeURIComponent(videoUrl)}`);
+        const data3 = await res3.json();
+        if (data3?.status && data3?.BK9?.audio) {
+          audioUrl = data3.BK9.audio;
+        }
+      } catch (e) {}
     }
 
-    // Stream the audio data back to your bot
+    if (!audioUrl) {
+      return res.status(500).send('All proxy download sources failed.');
+    }
+
     const audioRes = await fetch(audioUrl);
-    if (!audioRes.ok) return res.status(500).send('Failed to fetch audio stream.');
+    if (!audioRes.ok) return res.status(500).send('Failed to fetch audio stream buffer.');
 
     res.setHeader('Content-Type', 'audio/mpeg');
     const arrayBuffer = await audioRes.arrayBuffer();
